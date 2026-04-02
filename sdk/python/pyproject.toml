@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "contextbudget"
+version = "0.1.0"
+description = "Automatic AI context token tracking -- one line to add to your code"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.8"
+dependencies = ["requests>=2.20"]
+keywords = ["ai", "tokens", "tracking", "anthropic", "openai", "context"]
+
+[project.urls]
+Homepage = "https://contextbudget.dev"
+Repository = "https://github.com/contextbudget/sdk-python"
+
+[tool.setuptools.packages.find]
+include = ["contextbudget*"]

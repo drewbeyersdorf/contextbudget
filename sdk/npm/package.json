@@ -1,0 +1,22 @@
+{
+  "name": "@contextbudget/sdk",
+  "version": "0.1.0",
+  "description": "Automatic AI context token tracking -- one line to add to your code",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": ["ai", "tokens", "tracking", "anthropic", "openai", "context", "llm"],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/contextbudget/sdk-npm"
+  },
+  "homepage": "https://contextbudget.dev",
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

@@ -1,0 +1,1770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ContextBudget - See where your context tokens go</title>
+<meta name="description" content="ContextBudget shows you exactly where your AI context window tokens are spent. One line to install, instant visibility.">
+<style>
+/* ========================================
+   CSS Custom Properties - Color System
+   ======================================== */
+:root {
+  /* Backgrounds */
+  --bg-primary: #0a0a0a;
+  --bg-elevated: #111111;
+  --bg-surface: #161616;
+  --bg-surface-hover: #1a1a1a;
+  --bg-card: #0f0f0f;
+  --bg-code: #0d0d0d;
+
+  /* Borders */
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-medium: rgba(255, 255, 255, 0.1);
+  --border-focus: rgba(120, 119, 255, 0.5);
+
+  /* Text */
+  --text-primary: #ededed;
+  --text-secondary: #a0a0a0;
+  --text-tertiary: #666666;
+  --text-link: #878eff;
+
+  /* Accent */
+  --accent-primary: #878eff;
+  --accent-primary-hover: #a0a6ff;
+  --accent-glow: rgba(135, 142, 255, 0.15);
+  --accent-glow-strong: rgba(135, 142, 255, 0.25);
+
+  /* Category colors */
+  --color-system: #878eff;
+  --color-history: #34d399;
+  --color-tools: #f59e0b;
+  --color-current: #ec4899;
+
+  /* Pricing */
+  --color-free: #a0a0a0;
+  --color-pro: #878eff;
+  --color-team: #34d399;
+
+  /* Typography */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: 'SF Mono', 'Cascadia Code', 'Fira Code', 'JetBrains Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+
+  /* Spacing */
+  --section-gap: 160px;
+  --container-max: 1120px;
+
+  /* Transitions */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ========================================
+   Reset & Base
+   ======================================== */
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* Noise texture overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px 256px;
+}
+
+::selection {
+  background: var(--accent-glow-strong);
+  color: var(--text-primary);
+}
+
+a {
+  color: var(--text-link);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+a:hover {
+  color: var(--accent-primary-hover);
+}
+
+/* ========================================
+   Container
+   ======================================== */
+.container {
+  max-width: var(--container-max);
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* ========================================
+   Reveal Animations
+   ======================================== */
+.reveal {
+  opacity: 0;
+  transform: translateY(32px);
+  transition: opacity 0.8s var(--ease-out), transform 0.8s var(--ease-out);
+}
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.reveal-delay-1 { transition-delay: 0.1s; }
+.reveal-delay-2 { transition-delay: 0.2s; }
+.reveal-delay-3 { transition-delay: 0.3s; }
+.reveal-delay-4 { transition-delay: 0.4s; }
+
+/* ========================================
+   Navigation
+   ======================================== */
+nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  padding: 16px 0;
+  background: rgba(10, 10, 10, 0.8);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background 0.3s ease;
+}
+
+.nav-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: var(--container-max);
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.nav-logo-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  background: linear-gradient(135deg, var(--accent-primary), #6366f1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: white;
+  font-family: var(--font-mono);
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  list-style: none;
+}
+
+.nav-links a {
+  font-size: 13px;
+  color: var(--text-secondary);
+  transition: color 0.2s ease;
+  font-weight: 450;
+}
+.nav-links a:hover {
+  color: var(--text-primary);
+}
+
+.nav-cta {
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: 8px;
+  background: var(--text-primary);
+  color: var(--bg-primary) !important;
+  transition: opacity 0.2s ease, transform 0.15s ease;
+}
+.nav-cta:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+  color: var(--bg-primary) !important;
+}
+
+/* ========================================
+   Hero
+   ======================================== */
+.hero {
+  padding: 180px 0 120px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Top radial glow */
+.hero::before {
+  content: '';
+  position: absolute;
+  top: -200px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 900px;
+  height: 600px;
+  background: radial-gradient(ellipse, var(--accent-glow) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.hero-content {
+  position: relative;
+  text-align: center;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px 6px 8px;
+  border-radius: 100px;
+  border: 1px solid var(--border-medium);
+  background: var(--bg-surface);
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  margin-bottom: 32px;
+  font-weight: 450;
+}
+
+.hero-badge-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-history);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.4); }
+  50% { opacity: 0.8; box-shadow: 0 0 0 6px rgba(52, 211, 153, 0); }
+}
+
+.hero h1 {
+  font-size: clamp(40px, 6vw, 64px);
+  font-weight: 650;
+  letter-spacing: -0.035em;
+  line-height: 1.08;
+  margin-bottom: 20px;
+  background: linear-gradient(180deg, #ffffff 0%, #a0a0a0 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.hero p {
+  font-size: clamp(16px, 2vw, 18px);
+  color: var(--text-secondary);
+  max-width: 520px;
+  margin: 0 auto 40px;
+  line-height: 1.65;
+}
+
+.hero-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: 10px;
+  background: var(--text-primary);
+  color: var(--bg-primary);
+  font-size: 14px;
+  font-weight: 550;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s var(--ease-out);
+  text-decoration: none;
+}
+.btn-primary:hover {
+  opacity: 0.9;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(255, 255, 255, 0.1);
+  color: var(--bg-primary);
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: 10px;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid var(--border-medium);
+  cursor: pointer;
+  transition: all 0.2s var(--ease-out);
+  text-decoration: none;
+}
+.btn-secondary:hover {
+  color: var(--text-primary);
+  background: var(--bg-surface-hover);
+  border-color: rgba(255, 255, 255, 0.15);
+  transform: translateY(-1px);
+}
+
+/* ========================================
+   Hero Visualization - Live Token Usage
+   ======================================== */
+.hero-viz {
+  margin-top: 72px;
+  position: relative;
+}
+
+.hero-viz-window {
+  background: var(--bg-card);
+  border: 1px solid var(--border-medium);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.03),
+    0 20px 60px -12px rgba(0,0,0,0.5),
+    0 0 120px -40px var(--accent-glow);
+}
+
+.hero-viz-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: rgba(255,255,255,0.02);
+}
+
+.hero-viz-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--border-medium);
+}
+.hero-viz-dot:nth-child(1) { background: #ff5f57; }
+.hero-viz-dot:nth-child(2) { background: #febc2e; }
+.hero-viz-dot:nth-child(3) { background: #28c840; }
+
+.hero-viz-titlebar span {
+  flex: 1;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  font-weight: 450;
+  margin-right: 30px;
+}
+
+.hero-viz-body {
+  padding: 32px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  min-height: 320px;
+}
+
+/* Left panel: token meter */
+.viz-meter {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.viz-meter-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.viz-meter-label {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 550;
+}
+
+.viz-meter-value {
+  font-family: var(--font-mono);
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.viz-meter-value .unit {
+  font-size: 14px;
+  color: var(--text-tertiary);
+  font-weight: 400;
+  margin-left: 2px;
+}
+
+.viz-bar-container {
+  width: 100%;
+  height: 8px;
+  border-radius: 100px;
+  background: var(--bg-surface);
+  overflow: hidden;
+  display: flex;
+  gap: 2px;
+  margin-bottom: 24px;
+}
+
+.viz-bar-segment {
+  height: 100%;
+  border-radius: 100px;
+  transition: width 1.2s var(--ease-out);
+  width: 0;
+}
+
+.viz-bar-segment.system { background: var(--color-system); }
+.viz-bar-segment.history { background: var(--color-history); }
+.viz-bar-segment.tools { background: var(--color-tools); }
+.viz-bar-segment.current { background: var(--color-current); }
+
+.viz-bar-segment.animated {
+  /* widths set by JS */
+}
+
+.viz-legend {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 20px;
+}
+
+.viz-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.viz-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.viz-legend-item .pct {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+/* Right panel: live feed */
+.viz-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  position: relative;
+}
+
+.viz-feed::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 80px;
+  background: linear-gradient(transparent, var(--bg-card));
+  pointer-events: none;
+}
+
+.viz-feed-line {
+  padding: 5px 0;
+  display: flex;
+  gap: 12px;
+  animation: feed-in 0.4s var(--ease-out) both;
+  white-space: nowrap;
+}
+
+@keyframes feed-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.feed-time {
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+.feed-category {
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.feed-category.system { background: rgba(135,142,255,0.15); color: var(--color-system); }
+.feed-category.history { background: rgba(52,211,153,0.15); color: var(--color-history); }
+.feed-category.tools { background: rgba(245,158,11,0.15); color: var(--color-tools); }
+.feed-category.current { background: rgba(236,72,153,0.15); color: var(--color-current); }
+
+.feed-tokens {
+  color: var(--text-secondary);
+}
+
+.feed-cursor {
+  display: inline-block;
+  width: 6px;
+  height: 14px;
+  background: var(--accent-primary);
+  animation: blink 1s step-end infinite;
+  vertical-align: middle;
+  margin-left: 4px;
+  border-radius: 1px;
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+/* ========================================
+   Section Styling
+   ======================================== */
+section {
+  padding: 80px 0;
+}
+
+.section-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent-primary);
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.section-title {
+  font-size: clamp(28px, 4vw, 40px);
+  font-weight: 650;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  margin-bottom: 16px;
+}
+
+.section-desc {
+  font-size: 16px;
+  color: var(--text-secondary);
+  max-width: 560px;
+  line-height: 1.65;
+}
+
+.section-divider {
+  width: 100%;
+  height: 1px;
+  background: var(--border-subtle);
+  margin: 0;
+  border: none;
+}
+
+/* ========================================
+   Interactive Demo
+   ======================================== */
+.demo-section {
+  padding-top: var(--section-gap);
+  padding-bottom: var(--section-gap);
+}
+
+.demo-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 64px;
+  align-items: center;
+  margin-top: 56px;
+}
+
+.demo-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.demo-bar-row {
+  position: relative;
+}
+
+.demo-bar-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+
+.demo-bar-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.demo-bar-detail {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+
+.demo-bar-track {
+  width: 100%;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--bg-surface);
+  overflow: hidden;
+  position: relative;
+}
+
+.demo-bar-fill {
+  height: 100%;
+  border-radius: 8px;
+  transition: width 1.5s var(--ease-out);
+  width: 0;
+  display: flex;
+  align-items: center;
+  padding-left: 12px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(0,0,0,0.7);
+}
+
+.demo-bar-fill.system { background: linear-gradient(90deg, var(--color-system), #a5a9ff); }
+.demo-bar-fill.history { background: linear-gradient(90deg, var(--color-history), #6ee7b7); }
+.demo-bar-fill.tools { background: linear-gradient(90deg, var(--color-tools), #fbbf24); }
+.demo-bar-fill.current { background: linear-gradient(90deg, var(--color-current), #f472b6); }
+
+.demo-info {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.demo-info-card {
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-card);
+  transition: border-color 0.3s ease, background 0.3s ease;
+  cursor: default;
+}
+.demo-info-card:hover {
+  border-color: var(--border-medium);
+  background: var(--bg-surface);
+}
+
+.demo-info-card h4 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.demo-info-card p {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+
+.demo-info-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+}
+
+/* ========================================
+   Code / Install Section
+   ======================================== */
+.install-section {
+  padding-top: var(--section-gap);
+  padding-bottom: var(--section-gap);
+  text-align: center;
+}
+
+.install-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-top: 48px;
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.code-block {
+  background: var(--bg-code);
+  border: 1px solid var(--border-medium);
+  border-radius: 12px;
+  overflow: hidden;
+  text-align: left;
+  transition: border-color 0.3s ease;
+}
+.code-block:hover {
+  border-color: rgba(255,255,255,0.15);
+}
+
+.code-block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: rgba(255,255,255,0.02);
+}
+
+.code-block-lang {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.code-copy-btn {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: var(--font-sans);
+  transition: all 0.2s ease;
+}
+.code-copy-btn:hover {
+  color: var(--text-secondary);
+  background: rgba(255,255,255,0.06);
+}
+
+.code-block pre {
+  padding: 16px;
+  overflow-x: auto;
+}
+
+.code-block code {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+}
+
+.code-block code .kw { color: var(--color-system); }
+.code-block code .fn { color: var(--color-history); }
+.code-block code .str { color: var(--color-tools); }
+.code-block code .cm { color: var(--text-tertiary); }
+.code-block code .op { color: var(--text-tertiary); }
+.code-block code .var { color: var(--color-current); }
+
+.install-full {
+  grid-column: 1 / -1;
+}
+
+/* ========================================
+   Pricing Section
+   ======================================== */
+.pricing-section {
+  padding-top: var(--section-gap);
+  padding-bottom: var(--section-gap);
+  text-align: center;
+}
+
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-top: 56px;
+  max-width: 960px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.pricing-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  padding: 36px 28px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.3s var(--ease-out);
+  position: relative;
+}
+.pricing-card:hover {
+  border-color: var(--border-medium);
+  transform: translateY(-4px);
+  box-shadow: 0 20px 50px -15px rgba(0,0,0,0.4);
+}
+
+.pricing-card.featured {
+  border-color: var(--accent-primary);
+  background: linear-gradient(180deg, rgba(135,142,255,0.05) 0%, var(--bg-card) 100%);
+}
+.pricing-card.featured::before {
+  content: 'Most popular';
+  position: absolute;
+  top: -11px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 14px;
+  border-radius: 100px;
+  background: var(--accent-primary);
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.pricing-tier {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.pricing-price {
+  font-size: 40px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  margin-bottom: 4px;
+}
+
+.pricing-price .per {
+  font-size: 14px;
+  color: var(--text-tertiary);
+  font-weight: 400;
+}
+
+.pricing-desc {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  margin-bottom: 28px;
+  line-height: 1.5;
+}
+
+.pricing-features {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 32px;
+  flex: 1;
+}
+
+.pricing-features li {
+  font-size: 13px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  line-height: 1.45;
+}
+
+.pricing-features li::before {
+  content: '';
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: rgba(52,211,153,0.15);
+  margin-top: 1px;
+  position: relative;
+}
+.pricing-features li::after {
+  content: '';
+  position: absolute;
+  /* Checkmark via border trick */
+}
+
+.check-icon {
+  flex-shrink: 0;
+  color: var(--color-history);
+  font-size: 14px;
+}
+
+.pricing-btn {
+  width: 100%;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 550;
+  cursor: pointer;
+  transition: all 0.2s var(--ease-out);
+  text-align: center;
+  font-family: var(--font-sans);
+  border: none;
+  text-decoration: none;
+  display: block;
+}
+
+.pricing-btn-outline {
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid var(--border-medium);
+}
+.pricing-btn-outline:hover {
+  background: var(--bg-surface);
+  border-color: rgba(255,255,255,0.2);
+  color: var(--text-primary);
+}
+
+.pricing-btn-primary {
+  background: var(--text-primary);
+  color: var(--bg-primary);
+}
+.pricing-btn-primary:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(255,255,255,0.1);
+  color: var(--bg-primary);
+}
+
+.pricing-btn-accent {
+  background: var(--accent-primary);
+  color: white;
+}
+.pricing-btn-accent:hover {
+  background: var(--accent-primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px var(--accent-glow);
+  color: white;
+}
+
+/* ========================================
+   CTA Section
+   ======================================== */
+.cta-section {
+  padding-top: var(--section-gap);
+  padding-bottom: var(--section-gap);
+  text-align: center;
+  position: relative;
+}
+
+.cta-section::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 700px;
+  height: 400px;
+  background: radial-gradient(ellipse, var(--accent-glow) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.cta-content {
+  position: relative;
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.cta-content h2 {
+  font-size: clamp(28px, 4vw, 40px);
+  font-weight: 650;
+  letter-spacing: -0.03em;
+  margin-bottom: 16px;
+}
+
+.cta-content p {
+  font-size: 16px;
+  color: var(--text-secondary);
+  margin-bottom: 36px;
+  line-height: 1.6;
+}
+
+.cta-timer {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 48px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+}
+
+.cta-timer .seconds-label {
+  font-size: 16px;
+  color: var(--text-tertiary);
+  font-weight: 400;
+  margin-left: 4px;
+  letter-spacing: 0;
+}
+
+/* ========================================
+   Footer
+   ======================================== */
+footer {
+  padding: 40px 0;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.footer-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.footer-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+
+.footer-links {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  list-style: none;
+}
+
+.footer-links a {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  transition: color 0.2s ease;
+}
+.footer-links a:hover {
+  color: var(--text-secondary);
+}
+
+/* ========================================
+   Responsive
+   ======================================== */
+@media (max-width: 768px) {
+  :root {
+    --section-gap: 96px;
+  }
+
+  .nav-links {
+    display: none;
+  }
+
+  .hero {
+    padding: 140px 0 80px;
+  }
+
+  .hero-viz-body {
+    grid-template-columns: 1fr;
+    gap: 24px;
+    padding: 20px;
+    min-height: auto;
+  }
+
+  .viz-feed {
+    max-height: 200px;
+  }
+
+  .demo-grid {
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
+
+  .install-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pricing-grid {
+    grid-template-columns: 1fr;
+    max-width: 400px;
+  }
+
+  .footer-inner {
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .hero-actions {
+    flex-direction: column;
+  }
+
+  .btn-primary, .btn-secondary {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero h1 {
+    font-size: 32px;
+  }
+
+  .section-title {
+    font-size: 24px;
+  }
+
+  .pricing-price {
+    font-size: 32px;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- ====================== NAV ====================== -->
+<nav>
+  <div class="nav-inner">
+    <a href="#" class="nav-logo">
+      <div class="nav-logo-icon">CB</div>
+      ContextBudget
+    </a>
+    <ul class="nav-links">
+      <li><a href="#demo">Demo</a></li>
+      <li><a href="#install">Install</a></li>
+      <li><a href="#pricing">Pricing</a></li>
+      <li><a href="https://docs.contextbudget.dev" target="_blank">Docs</a></li>
+      <li><a href="#cta" class="nav-cta">Get started</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- ====================== HERO ====================== -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-content">
+      <div class="hero-badge reveal">
+        <span class="hero-badge-dot"></span>
+        Now tracking 2.4M sessions
+      </div>
+      <h1 class="reveal reveal-delay-1">See where your context budget goes.</h1>
+      <p class="reveal reveal-delay-2">Your AI context window is finite. ContextBudget shows you exactly where every token is spent -- system prompts, history, tool calls, and more -- so you can optimize what matters.</p>
+      <div class="hero-actions reveal reveal-delay-3">
+        <a href="#cta" class="btn-primary">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1v14M1 8h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          Start for free
+        </a>
+        <a href="#demo" class="btn-secondary">
+          See it in action
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+      </div>
+    </div>
+
+    <!-- Live visualization -->
+    <div class="hero-viz reveal reveal-delay-4">
+      <div class="hero-viz-window">
+        <div class="hero-viz-titlebar">
+          <div class="hero-viz-dot"></div>
+          <div class="hero-viz-dot"></div>
+          <div class="hero-viz-dot"></div>
+          <span>contextbudget -- session #1,847</span>
+        </div>
+        <div class="hero-viz-body">
+          <!-- Left: meter -->
+          <div class="viz-meter">
+            <div class="viz-meter-header">
+              <span class="viz-meter-label">Context Usage</span>
+              <span class="viz-meter-value" id="token-counter">0<span class="unit"> / 128K</span></span>
+            </div>
+            <div class="viz-bar-container">
+              <div class="viz-bar-segment system" id="bar-system"></div>
+              <div class="viz-bar-segment history" id="bar-history"></div>
+              <div class="viz-bar-segment tools" id="bar-tools"></div>
+              <div class="viz-bar-segment current" id="bar-current"></div>
+            </div>
+            <div class="viz-legend">
+              <div class="viz-legend-item">
+                <div class="viz-legend-dot" style="background:var(--color-system)"></div>
+                System prompt
+                <span class="pct" id="legend-system">0%</span>
+              </div>
+              <div class="viz-legend-item">
+                <div class="viz-legend-dot" style="background:var(--color-history)"></div>
+                History
+                <span class="pct" id="legend-history">0%</span>
+              </div>
+              <div class="viz-legend-item">
+                <div class="viz-legend-dot" style="background:var(--color-tools)"></div>
+                Tool results
+                <span class="pct" id="legend-tools">0%</span>
+              </div>
+              <div class="viz-legend-item">
+                <div class="viz-legend-dot" style="background:var(--color-current)"></div>
+                Current turn
+                <span class="pct" id="legend-current">0%</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: live feed -->
+          <div class="viz-feed" id="viz-feed"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====================== DEMO ====================== -->
+<section class="demo-section" id="demo">
+  <div class="container">
+    <div class="section-label reveal">How it works</div>
+    <h2 class="section-title reveal">Every token, accounted for.</h2>
+    <p class="section-desc reveal">ContextBudget intercepts your API calls and breaks down exactly where tokens go. No guessing, no surprises on your bill.</p>
+
+    <div class="demo-grid">
+      <div class="demo-bars reveal">
+        <div class="demo-bar-row">
+          <div class="demo-bar-label">
+            <span class="demo-bar-name" style="color:var(--color-system)">System Prompt</span>
+            <span class="demo-bar-detail"><span class="demo-token-count" data-target="19200">0</span> tokens</span>
+          </div>
+          <div class="demo-bar-track">
+            <div class="demo-bar-fill system" data-width="15">15%</div>
+          </div>
+        </div>
+        <div class="demo-bar-row">
+          <div class="demo-bar-label">
+            <span class="demo-bar-name" style="color:var(--color-history)">Conversation History</span>
+            <span class="demo-bar-detail"><span class="demo-token-count" data-target="51200">0</span> tokens</span>
+          </div>
+          <div class="demo-bar-track">
+            <div class="demo-bar-fill history" data-width="40">40%</div>
+          </div>
+        </div>
+        <div class="demo-bar-row">
+          <div class="demo-bar-label">
+            <span class="demo-bar-name" style="color:var(--color-tools)">Tool Results</span>
+            <span class="demo-bar-detail"><span class="demo-token-count" data-target="38400">0</span> tokens</span>
+          </div>
+          <div class="demo-bar-track">
+            <div class="demo-bar-fill tools" data-width="30">30%</div>
+          </div>
+        </div>
+        <div class="demo-bar-row">
+          <div class="demo-bar-label">
+            <span class="demo-bar-name" style="color:var(--color-current)">Current Turn</span>
+            <span class="demo-bar-detail"><span class="demo-token-count" data-target="19200">0</span> tokens</span>
+          </div>
+          <div class="demo-bar-track">
+            <div class="demo-bar-fill current" data-width="15">15%</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="demo-info reveal reveal-delay-1">
+        <div class="demo-info-card">
+          <h4>
+            <span class="demo-info-icon" style="background:rgba(135,142,255,0.15);color:var(--color-system);">S</span>
+            Find the bloat
+          </h4>
+          <p>Most system prompts are 3-5x larger than they need to be. ContextBudget shows you exactly which instructions are eating your window.</p>
+        </div>
+        <div class="demo-info-card">
+          <h4>
+            <span class="demo-info-icon" style="background:rgba(52,211,153,0.15);color:var(--color-history);">H</span>
+            Understand history growth
+          </h4>
+          <p>Watch how conversation history compounds over turns. Know exactly when truncation will kick in and what gets dropped.</p>
+        </div>
+        <div class="demo-info-card">
+          <h4>
+            <span class="demo-info-icon" style="background:rgba(245,158,11,0.15);color:var(--color-tools);">T</span>
+            Audit tool responses
+          </h4>
+          <p>Tool results are the hidden cost. One verbose API response can consume 30% of your context. See it, fix it.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="section-divider">
+
+<!-- ====================== INSTALL ====================== -->
+<section class="install-section" id="install">
+  <div class="container">
+    <div class="section-label reveal">Get started</div>
+    <h2 class="section-title reveal">One install. Three lines. That's it.</h2>
+    <p class="section-desc reveal" style="margin-left:auto;margin-right:auto;">Wrap your existing client. ContextBudget handles the rest.</p>
+
+    <div class="install-grid">
+      <div class="code-block reveal reveal-delay-1">
+        <div class="code-block-header">
+          <span class="code-block-lang">npm</span>
+          <button class="code-copy-btn" onclick="copyCode(this, 'npm install @contextbudget/sdk')">Copy</button>
+        </div>
+        <pre><code><span class="op">$</span> npm install <span class="str">@contextbudget/sdk</span></code></pre>
+      </div>
+
+      <div class="code-block reveal reveal-delay-2">
+        <div class="code-block-header">
+          <span class="code-block-lang">pip</span>
+          <button class="code-copy-btn" onclick="copyCode(this, 'pip install contextbudget')">Copy</button>
+        </div>
+        <pre><code><span class="op">$</span> pip install <span class="str">contextbudget</span></code></pre>
+      </div>
+
+      <div class="code-block install-full reveal reveal-delay-3">
+        <div class="code-block-header">
+          <span class="code-block-lang">TypeScript</span>
+          <button class="code-copy-btn" onclick="copyCode(this, tsSnippet)">Copy</button>
+        </div>
+        <pre><code><span class="kw">import</span> { wrap } <span class="kw">from</span> <span class="str">'@contextbudget/sdk'</span>;
+<span class="kw">import</span> Anthropic <span class="kw">from</span> <span class="str">'@anthropic-ai/sdk'</span>;
+
+<span class="cm">// Wrap your client. That's it.</span>
+<span class="kw">const</span> <span class="var">client</span> = <span class="fn">wrap</span>(<span class="kw">new</span> <span class="fn">Anthropic</span>());</code></pre>
+      </div>
+
+      <div class="code-block install-full reveal reveal-delay-4">
+        <div class="code-block-header">
+          <span class="code-block-lang">Python</span>
+          <button class="code-copy-btn" onclick="copyCode(this, pySnippet)">Copy</button>
+        </div>
+        <pre><code><span class="kw">from</span> contextbudget <span class="kw">import</span> wrap
+<span class="kw">from</span> anthropic <span class="kw">import</span> Anthropic
+
+<span class="cm"># Wrap your client. That's it.</span>
+<span class="var">client</span> = <span class="fn">wrap</span>(<span class="fn">Anthropic</span>())</code></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="section-divider">
+
+<!-- ====================== PRICING ====================== -->
+<section class="pricing-section" id="pricing">
+  <div class="container">
+    <div class="section-label reveal">Pricing</div>
+    <h2 class="section-title reveal">Start free. Scale when ready.</h2>
+    <p class="section-desc reveal" style="margin-left:auto;margin-right:auto;">No credit card required. Upgrade when you're hooked.</p>
+
+    <div class="pricing-grid">
+      <!-- Free -->
+      <div class="pricing-card reveal reveal-delay-1">
+        <div class="pricing-tier" style="color:var(--color-free)">Free</div>
+        <div class="pricing-price">$0</div>
+        <div class="pricing-desc">For trying things out</div>
+        <ul class="pricing-features">
+          <li><span class="check-icon">&#10003;</span> 3 tracked sessions</li>
+          <li><span class="check-icon">&#10003;</span> Real-time breakdown</li>
+          <li><span class="check-icon">&#10003;</span> Basic dashboard</li>
+          <li><span class="check-icon">&#10003;</span> Single project</li>
+        </ul>
+        <a href="#" class="pricing-btn pricing-btn-outline" data-price="price_free" onclick="handleCheckout('price_free', event)">Get started</a>
+      </div>
+
+      <!-- Pro -->
+      <div class="pricing-card featured reveal reveal-delay-2">
+        <div class="pricing-tier" style="color:var(--color-pro)">Pro</div>
+        <div class="pricing-price">$9<span class="per"> / mo</span></div>
+        <div class="pricing-desc">For developers shipping with AI</div>
+        <ul class="pricing-features">
+          <li><span class="check-icon">&#10003;</span> Unlimited sessions</li>
+          <li><span class="check-icon">&#10003;</span> Historical trends</li>
+          <li><span class="check-icon">&#10003;</span> Cost estimation</li>
+          <li><span class="check-icon">&#10003;</span> Slack / Discord alerts</li>
+          <li><span class="check-icon">&#10003;</span> 5 projects</li>
+          <li><span class="check-icon">&#10003;</span> Export to CSV / JSON</li>
+        </ul>
+        <a href="#" class="pricing-btn pricing-btn-accent" data-price="price_pro" onclick="handleCheckout('price_pro', event)">Start free trial</a>
+      </div>
+
+      <!-- Team -->
+      <div class="pricing-card reveal reveal-delay-3">
+        <div class="pricing-tier" style="color:var(--color-team)">Team</div>
+        <div class="pricing-price">$29<span class="per"> / mo</span></div>
+        <div class="pricing-desc">For teams building AI products</div>
+        <ul class="pricing-features">
+          <li><span class="check-icon">&#10003;</span> Everything in Pro</li>
+          <li><span class="check-icon">&#10003;</span> 10 seats included</li>
+          <li><span class="check-icon">&#10003;</span> Team dashboard</li>
+          <li><span class="check-icon">&#10003;</span> SSO / SAML</li>
+          <li><span class="check-icon">&#10003;</span> Unlimited projects</li>
+          <li><span class="check-icon">&#10003;</span> Priority support</li>
+        </ul>
+        <a href="#" class="pricing-btn pricing-btn-primary" data-price="price_team" onclick="handleCheckout('price_team', event)">Start free trial</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="section-divider">
+
+<!-- ====================== CTA ====================== -->
+<section class="cta-section" id="cta">
+  <div class="container">
+    <div class="cta-content">
+      <div class="reveal">
+        <div class="section-label">Ready?</div>
+        <h2>See your first session<br>in <span class="cta-timer" id="cta-countdown">30<span class="seconds-label">s</span></span></h2>
+        <p>Install the SDK, make one API call, and watch the breakdown appear in real time. No config. No setup. Just wrap and go.</p>
+        <a href="#install" class="btn-primary" style="margin-bottom:16px;">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1v14M1 8h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          Get started for free
+        </a>
+        <div style="font-size:12px;color:var(--text-tertiary);">No credit card required</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====================== FOOTER ====================== -->
+<footer>
+  <div class="container">
+    <div class="footer-inner">
+      <div class="footer-left">
+        <span style="color:var(--text-secondary);font-weight:500;">ContextBudget</span>
+        <span>&middot;</span>
+        <span>Built for developers who count tokens.</span>
+      </div>
+      <ul class="footer-links">
+        <li><a href="https://github.com/contextbudget" target="_blank">GitHub</a></li>
+        <li><a href="https://docs.contextbudget.dev" target="_blank">Docs</a></li>
+        <li><a href="https://twitter.com/contextbudget" target="_blank">Twitter</a></li>
+      </ul>
+    </div>
+  </div>
+</footer>
+
+<!-- ====================== JAVASCRIPT ====================== -->
+<script>
+(function() {
+  'use strict';
+
+  /* ========================================
+     Code snippets for copy buttons
+     ======================================== */
+  window.tsSnippet = `import { wrap } from '@contextbudget/sdk';
+import Anthropic from '@anthropic-ai/sdk';
+
+// Wrap your client. That's it.
+const client = wrap(new Anthropic());`;
+
+  window.pySnippet = `from contextbudget import wrap
+from anthropic import Anthropic
+
+# Wrap your client. That's it.
+client = wrap(Anthropic())`;
+
+  window.copyCode = function(btn, text) {
+    navigator.clipboard.writeText(text).then(function() {
+      var orig = btn.textContent;
+      btn.textContent = 'Copied!';
+      btn.style.color = 'var(--color-history)';
+      setTimeout(function() {
+        btn.textContent = orig;
+        btn.style.color = '';
+      }, 1500);
+    });
+  };
+
+  /* ========================================
+     Stripe checkout (placeholder)
+     ======================================== */
+  window.handleCheckout = function(priceId, event) {
+    event.preventDefault();
+    // In production, this would redirect to Stripe Checkout
+    // e.g., fetch('/api/create-checkout-session', { priceId })
+    console.log('Checkout initiated for:', priceId);
+    alert('Stripe checkout would open for price: ' + priceId + '\n\nConnect your Stripe account to enable payments.');
+  };
+
+  /* ========================================
+     Intersection Observer - Reveal on scroll
+     ======================================== */
+  var reveals = document.querySelectorAll('.reveal');
+  var observer = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, {
+    threshold: 0.1,
+    rootMargin: '0px 0px -60px 0px'
+  });
+
+  reveals.forEach(function(el) {
+    observer.observe(el);
+  });
+
+  /* ========================================
+     Hero Visualization - Animated Token Counter
+     ======================================== */
+  var tokenTargets = {
+    system: 15,
+    history: 40,
+    tools: 30,
+    current: 15
+  };
+
+  var totalTokens = 128000;
+  var currentTokens = { system: 0, history: 0, tools: 0, current: 0 };
+  var heroAnimated = false;
+
+  function animateTokenMeter() {
+    if (heroAnimated) return;
+    heroAnimated = true;
+
+    // Animate bars
+    setTimeout(function() {
+      document.getElementById('bar-system').style.width = tokenTargets.system + '%';
+      document.getElementById('bar-history').style.width = tokenTargets.history + '%';
+      document.getElementById('bar-tools').style.width = tokenTargets.tools + '%';
+      document.getElementById('bar-current').style.width = tokenTargets.current + '%';
+    }, 200);
+
+    // Animate counter
+    var duration = 1500;
+    var start = performance.now();
+    var targetTotal = Math.round(totalTokens * (tokenTargets.system + tokenTargets.history + tokenTargets.tools + tokenTargets.current) / 100);
+
+    function tick(now) {
+      var elapsed = now - start;
+      var progress = Math.min(elapsed / duration, 1);
+      // Ease out cubic
+      var eased = 1 - Math.pow(1 - progress, 3);
+
+      var current = Math.round(targetTotal * eased);
+      var counterEl = document.getElementById('token-counter');
+      counterEl.innerHTML = formatNumber(current) + '<span class="unit"> / 128K</span>';
+
+      // Update legend percentages
+      var categories = ['system', 'history', 'tools', 'current'];
+      categories.forEach(function(cat) {
+        var pct = Math.round(tokenTargets[cat] * eased);
+        document.getElementById('legend-' + cat).textContent = pct + '%';
+      });
+
+      if (progress < 1) {
+        requestAnimationFrame(tick);
+      }
+    }
+
+    requestAnimationFrame(tick);
+  }
+
+  function formatNumber(n) {
+    if (n >= 1000) {
+      return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+    }
+    return n.toString();
+  }
+
+  // Observe hero viz for animation trigger
+  var heroViz = document.querySelector('.hero-viz');
+  if (heroViz) {
+    var heroObserver = new IntersectionObserver(function(entries) {
+      if (entries[0].isIntersecting) {
+        animateTokenMeter();
+        startFeed();
+        heroObserver.disconnect();
+      }
+    }, { threshold: 0.3 });
+    heroObserver.observe(heroViz);
+  }
+
+  /* ========================================
+     Live Feed Animation
+     ======================================== */
+  var feedData = [
+    { cat: 'system', label: 'system', tokens: '+4,821', desc: 'CLAUDE.md loaded' },
+    { cat: 'system', label: 'system', tokens: '+2,340', desc: 'tool definitions' },
+    { cat: 'history', label: 'history', tokens: '+12,480', desc: '6 turns resumed' },
+    { cat: 'tools', label: 'tools', tokens: '+8,192', desc: 'Read file output' },
+    { cat: 'current', label: 'current', tokens: '+1,024', desc: 'user message' },
+    { cat: 'tools', label: 'tools', tokens: '+15,360', desc: 'Grep results' },
+    { cat: 'history', label: 'history', tokens: '+6,144', desc: 'assistant turn cached' },
+    { cat: 'tools', label: 'tools', tokens: '+3,072', desc: 'Bash output' },
+    { cat: 'current', label: 'current', tokens: '+2,048', desc: 'tool call request' },
+    { cat: 'system', label: 'system', tokens: '+1,536', desc: 'skill injection' },
+    { cat: 'history', label: 'history', tokens: '+9,216', desc: 'context compacted' },
+    { cat: 'tools', label: 'tools', tokens: '+4,096', desc: 'Edit diff applied' },
+  ];
+
+  var feedIndex = 0;
+  var feedContainer = document.getElementById('viz-feed');
+  var feedInterval;
+
+  function getTime() {
+    var d = new Date();
+    var h = d.getHours().toString().padStart(2, '0');
+    var m = d.getMinutes().toString().padStart(2, '0');
+    var s = d.getSeconds().toString().padStart(2, '0');
+    return h + ':' + m + ':' + s;
+  }
+
+  function addFeedLine() {
+    var data = feedData[feedIndex % feedData.length];
+    var line = document.createElement('div');
+    line.className = 'viz-feed-line';
+    line.innerHTML =
+      '<span class="feed-time">' + getTime() + '</span>' +
+      '<span class="feed-category ' + data.cat + '">' + data.label + '</span>' +
+      '<span class="feed-tokens">' + data.tokens + ' ' + data.desc + '</span>';
+
+    // Remove cursor from previous line
+    var existingCursor = feedContainer.querySelector('.feed-cursor');
+    if (existingCursor) existingCursor.remove();
+
+    feedContainer.appendChild(line);
+
+    // Add cursor to latest
+    var cursor = document.createElement('span');
+    cursor.className = 'feed-cursor';
+    line.querySelector('.feed-tokens').appendChild(cursor);
+
+    // Keep feed from getting too long
+    while (feedContainer.children.length > 10) {
+      feedContainer.removeChild(feedContainer.firstChild);
+    }
+
+    feedIndex++;
+  }
+
+  function startFeed() {
+    // Add first few lines quickly
+    addFeedLine();
+    setTimeout(addFeedLine, 400);
+    setTimeout(addFeedLine, 900);
+    setTimeout(addFeedLine, 1500);
+    setTimeout(addFeedLine, 2200);
+
+    // Then continue at interval
+    feedInterval = setInterval(addFeedLine, 2800);
+  }
+
+  /* ========================================
+     Demo Bars - Animated on scroll
+     ======================================== */
+  var demoBars = document.querySelectorAll('.demo-bar-fill');
+  var demoTokenCounts = document.querySelectorAll('.demo-token-count');
+  var demoAnimated = false;
+
+  var demoObserver = new IntersectionObserver(function(entries) {
+    if (entries[0].isIntersecting && !demoAnimated) {
+      demoAnimated = true;
+
+      demoBars.forEach(function(bar) {
+        var width = bar.getAttribute('data-width');
+        setTimeout(function() {
+          bar.style.width = width + '%';
+        }, 100);
+      });
+
+      // Animate token counters
+      demoTokenCounts.forEach(function(el) {
+        var target = parseInt(el.getAttribute('data-target'));
+        animateCounter(el, target, 1200);
+      });
+
+      demoObserver.disconnect();
+    }
+  }, { threshold: 0.2 });
+
+  var demoSection = document.querySelector('.demo-bars');
+  if (demoSection) {
+    demoObserver.observe(demoSection);
+  }
+
+  function animateCounter(el, target, duration) {
+    var start = performance.now();
+    function tick(now) {
+      var elapsed = now - start;
+      var progress = Math.min(elapsed / duration, 1);
+      var eased = 1 - Math.pow(1 - progress, 3);
+      var val = Math.round(target * eased);
+      el.textContent = val.toLocaleString();
+      if (progress < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+
+  /* ========================================
+     CTA Countdown
+     ======================================== */
+  var countdownEl = document.getElementById('cta-countdown');
+  var countdownValue = 30;
+  var countdownStarted = false;
+
+  var ctaObserver = new IntersectionObserver(function(entries) {
+    if (entries[0].isIntersecting && !countdownStarted) {
+      countdownStarted = true;
+      var interval = setInterval(function() {
+        countdownValue--;
+        if (countdownValue <= 0) {
+          countdownEl.innerHTML = '0<span class="seconds-label">s</span>';
+          clearInterval(interval);
+          return;
+        }
+        countdownEl.innerHTML = countdownValue + '<span class="seconds-label">s</span>';
+      }, 1000);
+      ctaObserver.disconnect();
+    }
+  }, { threshold: 0.5 });
+
+  if (countdownEl) {
+    ctaObserver.observe(countdownEl);
+  }
+
+  /* ========================================
+     Smooth scroll for anchor links
+     ======================================== */
+  document.querySelectorAll('a[href^="#"]').forEach(function(link) {
+    link.addEventListener('click', function(e) {
+      var target = document.querySelector(this.getAttribute('href'));
+      if (target) {
+        e.preventDefault();
+        var offset = 80; // nav height
+        var top = target.getBoundingClientRect().top + window.pageYOffset - offset;
+        window.scrollTo({ top: top, behavior: 'smooth' });
+      }
+    });
+  });
+
+})();
+</script>
+
+</body>
+</html>
