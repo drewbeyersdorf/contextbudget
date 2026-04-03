@@ -1,0 +1,38 @@
+date,platform,post_type,content_file,status
+2026-04-07,Reddit (r/ClaudeAI),Launch post,reddit/r-claudeai-launch.md,scheduled
+2026-04-07,Twitter/X,Launch thread,twitter/launch-thread.md,scheduled
+2026-04-07,Hacker News,Show HN,hn/show-hn-launch.md,scheduled
+2026-04-08,Reddit (r/ChatGPTCoding),Launch post,reddit/r-chatgptcoding-launch.md,scheduled
+2026-04-08,LinkedIn,Launch post,linkedin/launch-post.md,scheduled
+2026-04-09,Reddit (r/LocalLLaMA),Launch post,reddit/r-localllama-launch.md,scheduled
+2026-04-09,Blog,SEO post,blog/01-what-happens-when-context-fills-up.md,scheduled
+2026-04-10,Dev.to,Blog republish,blog/01-what-happens-when-context-fills-up.md (canonical),scheduled
+2026-04-10,Twitter/X,Tip - system prompt token cost,N/A - write fresh,draft
+2026-04-11,Reddit (r/ClaudeAI),Comment engagement,N/A - respond to context threads,ongoing
+2026-04-14,Blog,SEO post,blog/02-claude-code-vs-gemini-cli-vs-codex.md,scheduled
+2026-04-14,Twitter/X,Tip - tool definitions eat 15-20% of context,N/A - write fresh,draft
+2026-04-15,Reddit (r/OpenAI),Helpful comment + link,N/A - find context limit complaint thread,draft
+2026-04-15,LinkedIn,Insight post - tool definitions hidden cost,N/A - write fresh,draft
+2026-04-16,Anthropic Discord,Share in #projects,N/A - short intro + link,draft
+2026-04-16,Blog,SEO post,blog/03-hidden-cost-of-large-system-prompts.md,scheduled
+2026-04-17,Dev.to,Blog republish,blog/02-claude-code-vs-gemini-cli-vs-codex.md (canonical),scheduled
+2026-04-17,Twitter/X,Tip - file reads cost 2-10K tokens each,N/A - write fresh,draft
+2026-04-18,Reddit (r/LangChain),Integration tutorial post,N/A - write LangChain-specific tutorial,draft
+2026-04-21,Blog,SEO post,blog/04-how-to-track-token-usage-across-providers.md,scheduled
+2026-04-21,Twitter/X,Metric share - what 30 days of tracking showed me,N/A - write fresh,draft
+2026-04-22,Dev.to,Blog republish,blog/03-hidden-cost-of-large-system-prompts.md (canonical),scheduled
+2026-04-22,LinkedIn,Lesson post - what I learned from 30 days of token tracking,N/A - write fresh,draft
+2026-04-23,Reddit (r/selfhosted),Local-first tool share,N/A - emphasize no cloud architecture,draft
+2026-04-24,Hashnode,Blog republish,blog/04-how-to-track-token-usage-across-providers.md (canonical),draft
+2026-04-24,Twitter/X,User testimonial RT or quote tweet,N/A - find and amplify early users,placeholder
+2026-04-25,IndieHackers,Product launch post,N/A - write IH-specific launch post with metrics,draft
+2026-04-28,Twitter/X,Comparison post - context costs by provider,N/A - write fresh,draft
+2026-04-28,Reddit (r/ClaudeAI),Follow-up post - findings after 3 weeks,N/A - share real usage data,draft
+2026-04-29,LinkedIn,Build-in-public update - GitHub stars and user feedback,N/A - write fresh,draft
+2026-04-30,LM Studio Discord,Integration post,N/A - LM Studio specific setup guide,draft
+2026-05-01,Twitter/X,Thread - 5 things I learned from tracking 1M tokens,N/A - write fresh,draft
+2026-05-02,Reddit (r/MachineLearning),Educational comment on context window research,N/A - find relevant thread,draft
+2026-05-05,Product Hunt,Full launch,N/A - prep PH assets (logo, screenshots, tagline),draft
+2026-05-05,Twitter/X,Product Hunt launch announcement,N/A - write fresh,draft
+2026-05-06,LinkedIn,Product Hunt recap and lessons,N/A - write fresh,draft
+2026-05-07,Medium (TDS),Submit best-performing blog post,Whichever blog post performed best,draft

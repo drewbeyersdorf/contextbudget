@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ContextBudget - See where your context tokens go</title>
 <meta name="description" content="ContextBudget shows you exactly where your AI context window tokens are spent. One line to install, instant visibility.">
+<!-- Google AdSense - replace ca-pub-XXXXXXX with your publisher ID after approval -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-PLACEHOLDER" crossorigin="anonymous"></script>
 <style>
 /* ========================================
    CSS Custom Properties - Color System
@@ -1501,12 +1503,32 @@ client = wrap(Anthropic())`;
   /* ========================================
      Stripe checkout (placeholder)
      ======================================== */
+  var PRICE_MAP = {
+    'price_free': null,
+    'price_pro': 'price_1THtvCPMQUb4AkDpKcaDG19Z',
+    'price_team': 'price_1THtvCPMQUb4AkDpcrZNrANX'
+  };
+
   window.handleCheckout = function(priceId, event) {
     event.preventDefault();
-    // In production, this would redirect to Stripe Checkout
-    // e.g., fetch('/api/create-checkout-session', { priceId })
-    console.log('Checkout initiated for:', priceId);
-    alert('Stripe checkout would open for price: ' + priceId + '\n\nConnect your Stripe account to enable payments.');
+    if (priceId === 'price_free') {
+      window.location.href = '#install';
+      return;
+    }
+    var stripePriceId = PRICE_MAP[priceId];
+    if (!stripePriceId) return;
+    fetch('https://cb-api.brkn.ai/api/create-checkout-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tier: priceId === 'price_pro' ? 'pro' : 'team' })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.url) window.location.href = data.url;
+    })
+    .catch(function() {
+      window.open('https://buy.stripe.com/test_contextbudget_' + priceId.split('_').pop(), '_blank');
+    });
   };
 
   /* ========================================
